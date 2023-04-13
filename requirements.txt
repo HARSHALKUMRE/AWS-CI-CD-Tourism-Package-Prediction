@@ -1,0 +1,14 @@
+jupyter
+category-encoders
+imblearn
+python-multipart
+pandas
+numpy
+seaborn
+matplotlib
+scikit-learn
+catboost
+xgboost
+dill
+Flask
+-e .
