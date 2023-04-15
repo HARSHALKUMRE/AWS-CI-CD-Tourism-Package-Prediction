@@ -12,7 +12,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder, PowerTransformer
 from imblearn.combine import SMOTEENN
 
-from tourism.utils import save_object
+from tourism.utils import MainUtils
 
 @dataclass
 class DataTransformationConfig:
@@ -22,49 +22,58 @@ class DataTransformation:
     def __init__(self):
         self.data_transformation_config = DataTransformationConfig()
 
+        self.utils = MainUtils()
+
     def get_data_transformation_object(self) -> object:
         """
         Method Name :   get_data_transformer_object
         Description :   This method creates and returns a data transformer object
         """
         try:
-            logging.info("Entered get_data_transformer_object method of DataTransformation class")
-            
-            # Define the categorical columns and numerical columns
-            categorical_cols = ['TypeofContact', 'Occupation, Gender', 'ProductPitched', 'MaritalStatus', 'Designation']
+            logging.info(
+                "Got numerical, categorical, transformation columns from schema config"
+            )
 
-            discrete_cols = ['CityTier', 'NumberOfPersonVisiting', 'NumberOfFollowups', 'PreferredPropertyStar', 'NumberOfTrips', 'Passport', 'PitchSatisfactionScore', 'OwnCar', 'NumberOfChildrenVisiting']
+            schema_info = self.utils.read_schema_config_file()
 
-            continuous_cols = ['Age', 'DurationOfPitch', 'MonthlyIncome']
+            Discrete_columns = schema_info["Discrete_columns"]
 
-            transformation_cols = ['DurationOfPitch', 'MonthlyIncome']
+            Continuous_columns = schema_info["Continuous_columns"]
 
-            logging.info("Initialized Data Transformation Pipeline.")
+            Categorical_columns = schema_info["Categorical_columns"]
+
+            Transformation_columns = schema_info["Transformation_columns"]
+
+            logging.info(
+                "Got numerical cols,one hot cols,binary cols from schema config"
+            )
+
+            logging.info("Initialized Data Transformer pipeline.")
 
             discrete_pipeline = Pipeline(
-                steps = [
+                steps=[
                     ("imputer", SimpleImputer(strategy="most_frequent")),
                     ("scaler", StandardScaler()),
                 ]
             )
-            
+
             continuous_pipeline = Pipeline(
-                steps = [
+                steps=[
                     ("imputer", SimpleImputer(strategy="mean")),
-                    ("scaler", StandardScaler()),  
+                    ("scaler", StandardScaler()),
                 ]
             )
 
-            categorical_pipeline = Pipeline(
-                steps = [
+            cat_pipeline = Pipeline(
+                steps=[
                     ("imputer", SimpleImputer(strategy="most_frequent")),
                     ("one_hot_encoder", OneHotEncoder()),
                     ("scaler", StandardScaler(with_mean=False)),
                 ]
             )
 
-            transform_pipeline = Pipeline(
-                steps = [
+            transform_pipe = Pipeline(
+                steps=[
                     ("imputer", SimpleImputer(strategy="mean")),
                     ("transformer", PowerTransformer(standardize=True)),
                 ]
@@ -72,14 +81,18 @@ class DataTransformation:
 
             preprocessor = ColumnTransformer(
                 [
-                    ("discrete_pipeline", discrete_pipeline, discrete_cols),
-                    ("continuous_pipeline", continuous_pipeline, continuous_cols),
-                    ("categorical_pipeline", categorical_pipeline, categorical_cols),
-                    ("power_transformation", transform_pipeline, transformation_cols),
+                    ("Discrete_Pipeline", discrete_pipeline, Discrete_columns),
+                    ("Continuous_Pipeline", continuous_pipeline, Continuous_columns),
+                    ("Categorical_Pipeline", cat_pipeline, Categorical_columns),
+                    ("Power_Transformation", transform_pipe, Transformation_columns),
                 ]
             )
 
             logging.info("Created preprocessor object from ColumnTransformer")
+
+            logging.info(
+                "Exited get_data_transformer_object method of DataTransformation class"
+            )
 
             return preprocessor
 
@@ -107,21 +120,17 @@ class DataTransformation:
 
             logging.info("Got the preprocessor object.")
 
-            target_column_name = 'ProdTaken'
+            TARGET_COLUMN = 'ProdTaken'
 
-            drop_columns = [target_column_name, 'CustomerID']
+            input_feature_train_df = train_df.drop(columns=[TARGET_COLUMN], axis=1)
 
-            input_feature_train_df = train_set.drop(columns=[TARGET_COLUMN], axis=1)
-
-            target_feature_train_df = train_set[TARGET_COLUMN]
-
-            input_feature_train_df = train_df.drop(columns=drop_columns, axis=1)
-            target_feature_train_df = train_df[target_column_name]
+            target_feature_train_df = train_df[TARGET_COLUMN]
 
             logging.info("Got train features and test features of Training dataset")
 
-            input_feature_test_df = test_df.drop(columns=drop_columns, axis=1)
-            target_feature_test_df = test_df[target_column_name]
+            input_feature_test_df = test_df.drop(columns=[TARGET_COLUMN], axis=1)
+
+            target_feature_test_df = test_df[TARGET_COLUMN]
 
             logging.info("Got train features and test features of Testing dataset")
 
@@ -160,7 +169,7 @@ class DataTransformation:
                 input_feature_test_final, np.array(target_feature_test_final)
             ]
 
-            save_object(
+            self.utils.save_object(
 
                 file_path = self.data_transformation_config.preprocessor_obj_file_path,
                 obj = preprocessing_obj
